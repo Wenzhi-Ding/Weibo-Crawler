@@ -3,6 +3,7 @@ import time
 from typing import List
 import requests
 import re
+from datetime import datetime
 
 import numpy as np
 import base62
@@ -63,6 +64,7 @@ def dump_post_content(data: tuple, con: sqlite3.Connection):
 
 
 def decode_mid(mid: str):
+    '''4021924038830731 <- E9cllB3h9'''
     mid = mid.swapcase()
     a, b, c = mid[0], mid[1:5], mid[5:]
     return str(base62.decode(a)) + str(base62.decode(b)).zfill(7) + str(base62.decode(c)).zfill(7)
@@ -71,4 +73,24 @@ def decode_mid(mid: str):
 def encode_mid(mid: str):
     '''4021924038830731 -> E9cllB3h9'''
     a, b, c = mid[:2], mid[2:9], mid[9:]
-    return (base62.encode(int(a)) + base62.encode(int(b)) + base62.encode(int(c))).swapcase()
+    return (base62.encode(int(a)) + base62.encode(int(b)).zfill(4) + base62.encode(int(c)).zfill(4)).swapcase()
+
+
+def update_keyword_progress(keyword: str, mids: List[str], con: sqlite3.Connection):
+    cur = con.cursor()
+    cur.execute(f'SELECT json_extract(data,"$.created_at") FROM posts WHERE mid in ({",".join(mids)})')
+    created_at = cur.fetchall()
+    ts = [datetime.strptime(t[0], '%a %b %d %H:%M:%S %z %Y') for t in created_at]
+    min_timestamp = min(ts).strftime('%Y-%m-%d %H:%M:%S')
+    max_timestamp = max(ts).strftime('%Y-%m-%d %H:%M:%S')
+
+    cur.execute(f'SELECT * FROM keywords WHERE keyword="{keyword}"')
+    r = cur.fetchall()
+
+    if r:
+        _, st, et, _ = r[0]
+        st = min(st, min_timestamp)
+        et = max(et, max_timestamp)
+        cur.execute(f'UPDATE keywords SET start_time="{st}", end_time="{et}" WHERE keyword="{keyword}"')
+    else:
+        cur.execute(f'INSERT INTO keywords(keyword, start_time, end_time) VALUES ("{keyword}", "{min_timestamp}", "{max_timestamp}")')
