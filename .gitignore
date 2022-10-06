@@ -1,3 +1,6 @@
 dev.ipynb
 *.db
 __pycache__
+*.csv
+*.xlsx
+*cookies*
