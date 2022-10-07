@@ -21,10 +21,12 @@ CREATE TABLE IF NOT EXISTS posts (
 --     update_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 -- );
 
--- keywords：记录检索关键词及完成进度
-CREATE TABLE IF NOT EXISTS keywords (
-    keyword TEXT PRIMARY KEY NOT NULL,
+-- keyword_queries：记录检索关键词及完成进度
+CREATE TABLE IF NOT EXISTS keyword_queries (
+    query_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    keyword TEXT NOT NULL,
     start_time TIMESTAMP,
+    min_time TIMESTAMP,
     end_time TIMESTAMP,
     update_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
