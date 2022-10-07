@@ -25,6 +25,6 @@ if __name__ == "__main__":
     worker1.start()
     worker2.start()
 
-    writer.join()
+    # writer.join()
 
-    writer.terminate()
+    # writer.terminate()

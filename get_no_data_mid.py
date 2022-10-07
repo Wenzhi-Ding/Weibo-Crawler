@@ -13,4 +13,4 @@ for mid in r:
     mid = str(mid[0])
     print(mid)
     json = utils.get_post_json(mid)
-    utils.dump_post_content((mid, json), con)
+    utils.dump_post_content_non_parallel((json, mid), con)

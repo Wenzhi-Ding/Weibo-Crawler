@@ -6,8 +6,9 @@ import re
 from datetime import datetime, timedelta
 import random
 from multiprocessing import Queue
+import logging
 
-from py_reminder import send_email
+# from py_reminder import send_email
 import base62
 
 HEADERS = {
@@ -33,7 +34,7 @@ def get_random_cookie():
     cookies = [x.strip().split() for x in cookies]
     cookies = [(sub, name) for sub, name in cookies if sub not in get_expired_cookies()]
     if not cookies:
-        send_email(task="没有可用COOKIE")
+        # send_email(task="没有可用COOKIE")
         raise Exception("没有可用COOKIE")
     return random.choice(cookies)
 
@@ -84,6 +85,12 @@ def dump_search_results(data: List[tuple], write_queue: Queue):
 
 def dump_post_content(data: tuple, write_queue: Queue):
     write_queue.put(("UPDATE posts SET data=? WHERE mid=?", [data]))
+
+
+def dump_post_content_non_parallel(data: tuple, con: sqlite3.Connection):
+    cur = con.cursor()
+    cur.executemany("UPDATE posts SET data=? WHERE mid=?", [data])
+    con.commit()
 
 
 def decode_mid(mid: str):
@@ -174,12 +181,14 @@ def get_query_periods(start: str, end: str, con: sqlite3.Connection, task_queue:
 
 
 def search_period(task_queue: Queue, write_queue: Queue, con: sqlite3.Connection, START, END, logfile="") -> bool:
-    # if logfile: sys.stdout = open(logfile, 'w')
+    if logfile: 
+        logger = logging.getLogger(logfile)
+        logger.setLevel(logging.INFO)
     while True:
         new_posts = 0
         keyword, start, end = task_queue.get()
         for page in range(1, 51):
-            print(f'keyword={keyword} start={start} end={end} page={page}')
+            logging.info(f'keyword={keyword} start={start} end={end} page={page}')
 
             # 获取搜索页
             data = get_search_page(keyword=keyword, start=start, end=end, page=page)
@@ -192,30 +201,32 @@ def search_period(task_queue: Queue, write_queue: Queue, con: sqlite3.Connection
 
             # 获取搜索结果的详细数据
             mids = [mid for mid, uid in data]
-            print(mids)
+            new_posts += len(mids)
+            logging.info(mids)
             cur = con.cursor()
             cur.execute(f'SELECT mid FROM posts WHERE data IS NULL and mid IN ({",".join(mids)})')
             mids = cur.fetchall()
-            # print(mids)
+            # logging.info(mids)
             if not mids:
-                print("所有搜索结果已经获取过详细数据")
+                logging.info("所有搜索结果已经获取过详细数据")
                 continue
             mids = [str(x[0]) for x in mids]
-            new_posts += len(mids)
+            # new_posts += len(mids)
             for mid in mids:
-                print(mid)
+                logging.info(mid)
                 json = get_post_json(mid)
                 if json: dump_post_content((json, mid), write_queue)
 
             # 更新搜索进度
             update_keyword_progress(con=con, keyword=keyword, mids=mids, end_time=end, write_queue=write_queue)
 
+        # 此处逻辑有问题，如果搜索结果为空，会导致无法更新搜索进度
         if new_posts == 0:
             print("此区间无新数据")
             # 说明可以把下限更新到查询下限，而非实际数据的下限
             update_keyword_progress(con=con, keyword=keyword, end_time=end, start_time=start, write_queue=write_queue)
-        else:
-            get_query_periods(START, END, con, task_queue)  # 更新队列
+        # else:
+        if task_queue.empty(): get_query_periods(START, END, con, task_queue)  # 更新队列
 
 
 def add_keywords(keywords: List[str], write_queue: Queue):
@@ -223,11 +234,13 @@ def add_keywords(keywords: List[str], write_queue: Queue):
 
 
 def write_sqlite(write_queue: Queue):
+    logger = logging.getLogger('write.log')
     write_con = sqlite3.connect('weibo.db')
     print('数据库写入连接创建成功')
     cur = write_con.cursor()
     while True:
         script, data = write_queue.get()
+        logger.info(f'{script}\n{data}')
         cur.executemany(script, data)
         write_con.commit()
 
