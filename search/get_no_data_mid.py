@@ -1,7 +1,9 @@
+import os
 import utils
 import sqlite3
+import os
 
-con = sqlite3.connect('/home/wenzhi/Weibo-Search-Crawler/weibo.db')
+con = sqlite3.connect(os.path.dirname(__file__) + '/../weibo.db')
 
 cur = con.cursor()
 cur.execute(f'SELECT mid FROM posts WHERE data IS NULL')

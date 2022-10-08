@@ -1,12 +1,13 @@
 import utils
 import sqlite3
+import os
 
 keyword = "华海药业"
 start = "2010-01-01-0"
 end = "2020-01-01-0"
 cont = 1
 
-con = sqlite3.connect('/home/wenzhi/Weibo-Search-Crawler/weibo.db')
+con = sqlite3.connect(os.path.dirname(__file__) + '/../weibo.db')
 
 while cont:  # 一次循环中只要有一个period查到了新数据，就继续查询一轮
     cont = 0

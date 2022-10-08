@@ -7,9 +7,14 @@ from datetime import datetime, timedelta
 import random
 from multiprocessing import Queue
 import logging
+import os
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 # from py_reminder import send_email
 import base62
+
+logging.basicConfig(filename=os.path.dirname(__file__) + '/../log', level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/101.0.4951.64 Safari/537.36 Edg/101.0.1210.53'
@@ -41,23 +46,31 @@ def get_random_cookie():
 
 def get_api(api: str, wait=2, check_cookie=False, retries=3):
     sub, name = get_random_cookie()
-    r = requests.get(api, headers=HEADERS, cookies={'SUB': sub})
+    session = requests.Session()
+    retry = Retry(connect=3, backoff_factor=2)
+    adapter = HTTPAdapter(max_retries=retry)
+    session.mount('http://', adapter)
+    session.mount('https://', adapter)
+    r = session.get(api, headers=HEADERS, cookies={'SUB': sub})
 
-    for _ in range(retries):
-        time.sleep(random.randint(wait, wait + 2))
-        if r.status_code in [200, 304]:
-            r = r.content.decode()
-            if check_cookie and "$CONFIG[\'watermark\']" not in r:
-                # send_email(task=f"{name}的COOKIE可能过期")  # 等所有COOKIE都不能用了再提示
-                print(f"{name}的COOKIE可能过期")
-                add_expired_cookie(sub)
-            return r
+    time.sleep(random.randint(wait, wait + 2))
+    if r.status_code in [200, 304]:
+        r = r.content.decode()
+        if check_cookie and "$CONFIG[\'watermark\']" not in r:
+            # send_email(task=f"{name}的COOKIE可能过期")  # 等所有COOKIE都不能用了再提示
+            print(f"{name}的COOKIE可能过期")
+            add_expired_cookie(sub)
+        return r
     # raise ValueError('API未能成功访问。')
     print('API未能成功访问。')
 
 
 def get_search_page(keyword: str, start: str, end: str, page: int):
+    logger = logging.getLogger("get_search_page")
+    start = timestamp_to_query_time(start)
+    end = timestamp_to_query_time(end)
     api = f'https://s.weibo.com/weibo?q={keyword}&typeall=1&suball=1&timescope=custom:{start}:{end}&page={page}'
+    logger.info(f"查询API：{api}")
     r = get_api(api, check_cookie=True)
     res = re.findall('(?<=<a href=").+?(?=".*wb_time">)', r)
     data = []
@@ -67,7 +80,18 @@ def get_search_page(keyword: str, start: str, end: str, page: int):
     return data
 
 
-def get_post_json(mid: str):
+def get_post_json(mid: str, con: sqlite3.Connection):
+    logger = logging.getLogger("get_post_json")
+    cur = con.cursor()
+    cur.execute(f'SELECT mid FROM posts WHERE data IS NULL and mid=?', (mid,))
+    if not cur.fetchall():
+        _s = f"已爬取微博{mid}，跳过"
+        logger.info(_s)
+        print(_s)
+        return ''
+    _s = f"正在爬取微博{mid}"
+    logger.info(_s)
+    print(_s)
     emid = encode_mid(mid)
     api = f'https://weibo.com/ajax/statuses/show?id={emid}'
     # print(api)
@@ -106,26 +130,18 @@ def encode_mid(mid: str):
     return (base62.encode(int(a)) + base62.encode(int(b)).zfill(4) + base62.encode(int(c)).zfill(4)).swapcase()
 
 
-def update_keyword_progress(keyword: str, end_time: str, con: sqlite3.Connection, write_queue: Queue, mids=[], start_time=""):
+def update_keyword_progress(keyword: str, start_time: str, end_time: str, mids: List[str], con: sqlite3.Connection, write_queue: Queue):
+    # logger = logging.getLogger('update_keyword_progress')
     cur = con.cursor()
-    if mids:
-        cur.execute(f'SELECT json_extract(data,"$.created_at") FROM posts WHERE mid in ({",".join(mids)}) AND data NOT NULL')
-        created_at = cur.fetchall()
-        if not created_at: return 0  # 当前页面没爬到数据，就不更新进度
+    cur.execute(f'SELECT json_extract(data,"$.created_at") FROM posts WHERE mid in ({",".join(mids)}) AND data NOT NULL')
+    created_at = cur.fetchall()
+    if created_at:
         ts = [datetime.strptime(t[0], '%a %b %d %H:%M:%S %z %Y') for t in created_at if t[0]]
-    min_timestamp = query_time_to_timestamp(start_time) if start_time else query_time_to_timestamp(min(ts))
-    max_timestamp = query_time_to_timestamp(end_time)  # Use query end time as max timestamp
-
-    cur.execute(f'SELECT * FROM keywords WHERE keyword="{keyword}"')
-    r = cur.fetchall()
-
-    if r:
-        _, st, et, _ = r[0]
-        st = min(st, min_timestamp) if st else min_timestamp
-        et = max(et, max_timestamp) if et else max_timestamp
-        write_queue.put(('UPDATE keywords SET start_time=?, end_time=? WHERE keyword=?', [(st, et, keyword)]))
+        min_time = query_time_to_timestamp(min(ts))
     else:
-        write_queue.put(('INSERT INTO keywords(keyword, start_time, end_time) VALUES (?, ?, ?)', [(keyword, min_timestamp, max_timestamp)]))
+        min_time = end_time
+
+    write_queue.put(('INSERT INTO keyword_queries(keyword, start_time, min_time, end_time) VALUES (?, ?, ?, ?)', [(keyword, start_time, min_time, end_time)]))
 
 
 def query_time_to_timestamp(query_time, shift={}):
@@ -150,45 +166,64 @@ def get_query_periods(start: str, end: str, con: sqlite3.Connection, task_queue:
     end = query_time_to_timestamp(end)
 
     cur = con.cursor()
-    cur.execute(f'SELECT keyword FROM keywords WHERE "{start}" < start_time OR end_time < "{end}" OR start_time IS NULL OR end_time IS NULL')
+    cur.execute(f'SELECT keyword FROM keyword_queries')  #  WHERE "{start}" < start_time OR end_time < "{end}" OR start_time IS NULL OR end_time IS NULL
     r = cur.fetchall()
-    keywords = [x[0] for x in r]
+    keywords = set([x[0] for x in r])
 
     # 更新待搜索队列
     print(f"共{len(keywords)}个关键词")
     for keyword in keywords:
-        cur.execute(f'SELECT start_time, end_time FROM keywords WHERE keyword="{keyword}"')
-        r = cur.fetchall()
-        st, et = r[0]
-
-        if not st:  # 从未查询过
-            _end = timestamp_to_query_time(end)
-            _start = timestamp_to_query_time(start)
-            print(f"加入队列：{keyword} {_start} {_end}")
-            task_queue.put((keyword, _start, _end))
-
-        if st and st > start:
-            _end = timestamp_to_query_time(st, shift={'hours': 1})
-            _start = timestamp_to_query_time(start)
-            print(f"加入队列：{keyword} {_start} {_end}")
-            task_queue.put((keyword, _start, _end))
-
-        if et and et < end:
-            _end = timestamp_to_query_time(end)
-            _start = timestamp_to_query_time(et)
-            print(f"加入队列：{keyword} {_start} {_end}")
-            task_queue.put((keyword, _start, _end))
+        periods = break_query_period(keyword, start, end, con)
+        for period in periods:
+            cur.execute(f'SELECT keyword FROM keyword_queries WHERE keyword=? AND start_time=? AND end_time=?', (keyword, period[0], period[1]))
+            if cur.fetchall():
+                print(f"关键词{keyword}在{period[0]}~{period[1]}已经查询过，跳过")
+                continue
+            task_queue.put(period)
 
 
-def search_period(task_queue: Queue, write_queue: Queue, con: sqlite3.Connection, START, END, logfile="") -> bool:
-    if logfile: 
-        logger = logging.getLogger(logfile)
-        logger.setLevel(logging.INFO)
+def break_query_period(keyword: str, start: str, end: str, con: sqlite3.Connection):
+    cur = con.cursor()
+    cur.execute("SELECT min_time, end_time FROM keyword_queries WHERE keyword=?", (keyword,))
+    r = cur.fetchall()
+    # print(r)
+
+    if not r: return [(keyword, start, end)]
+
+    _left = set([start] + [_r for _l, _r in r])
+    _right = set([end] + [_l for _l, _r in r])
+    left = list(_left - _right)
+    right = list(_right - _left)
+    left.sort(reverse=True)
+    right.sort(reverse=True)
+
+    # print(left)
+    # print(right)
+
+    periods = []
+    while left and right:
+        _l = left.pop()
+        _r = right.pop()
+        while _l == _r and right:
+            _r = right.pop()
+        if _l < _r:
+            periods.append((keyword, _l, _r))
+            
+    return periods
+
+
+def search_period(task_queue: Queue, write_queue: Queue, con: sqlite3.Connection, START, END, name) -> bool:
+    logger = logging.getLogger('search_period')
     while True:
-        new_posts = 0
         keyword, start, end = task_queue.get()
+        if start >= end:
+            _s = f"({name}) {keyword}查询开始时间不小于结束时间：{start} >= {end}"
+            continue
+        all_mids = set()
         for page in range(1, 51):
-            logging.info(f'keyword={keyword} start={start} end={end} page={page}')
+            _s = f'({name}) keyword={keyword} start={start} end={end} page={page}'
+            logger.info(_s)
+            print(_s)
 
             # 获取搜索页
             data = get_search_page(keyword=keyword, start=start, end=end, page=page)
@@ -200,33 +235,32 @@ def search_period(task_queue: Queue, write_queue: Queue, con: sqlite3.Connection
             dump_search_results(sr_data, write_queue)
 
             # 获取搜索结果的详细数据
-            mids = [mid for mid, uid in data]
-            new_posts += len(mids)
-            logging.info(mids)
-            cur = con.cursor()
-            cur.execute(f'SELECT mid FROM posts WHERE data IS NULL and mid IN ({",".join(mids)})')
-            mids = cur.fetchall()
-            # logging.info(mids)
-            if not mids:
-                logging.info("所有搜索结果已经获取过详细数据")
-                continue
-            mids = [str(x[0]) for x in mids]
-            # new_posts += len(mids)
-            for mid in mids:
-                logging.info(mid)
-                json = get_post_json(mid)
-                if json: dump_post_content((json, mid), write_queue)
+            mids = set([mid for mid, uid in data])
+            _s = f"({name}) keyword={keyword} mids={','.join(mids)}"
+            logger.info(_s)
+            print(_s)
 
-            # 更新搜索进度
-            update_keyword_progress(con=con, keyword=keyword, mids=mids, end_time=end, write_queue=write_queue)
+            all_mids |= mids
 
-        # 此处逻辑有问题，如果搜索结果为空，会导致无法更新搜索进度
-        if new_posts == 0:
-            print("此区间无新数据")
-            # 说明可以把下限更新到查询下限，而非实际数据的下限
-            update_keyword_progress(con=con, keyword=keyword, end_time=end, start_time=start, write_queue=write_queue)
-        # else:
+            # cur = con.cursor()
+            # cur.execute(f'SELECT mid FROM posts WHERE data IS NULL and mid IN ({",".join(mids)})')
+            # mids = cur.fetchall()
+            # if not mids:
+            #     _s = "所有搜索结果已经获取过详细数据"
+            #     logger.info((name, keyword, mids))
+            #     print(name, keyword, _s)
+            #     continue
+            # mids = [str(x[0]) for x in mids]
+            # for mid in mids:
+            #     json = get_post_json(mid)
+            #     if json: dump_post_content((json, mid), write_queue)
+
+        get_no_data_posts(con=con, write_queue=write_queue)  # 尝试补齐漏的数据
+
+        update_keyword_progress(keyword=keyword, end_time=end, start_time=start, mids=all_mids, con=con, write_queue=write_queue)
+
         if task_queue.empty(): get_query_periods(START, END, con, task_queue)  # 更新队列
+        if task_queue.empty(): return True  # 更新完后仍然无任务则退出
 
 
 def add_keywords(keywords: List[str], write_queue: Queue):
@@ -234,21 +268,23 @@ def add_keywords(keywords: List[str], write_queue: Queue):
 
 
 def write_sqlite(write_queue: Queue):
-    logger = logging.getLogger('write.log')
+    logger = logging.getLogger('write')
     write_con = sqlite3.connect('weibo.db')
     print('数据库写入连接创建成功')
     cur = write_con.cursor()
     while True:
-        script, data = write_queue.get()
-        logger.info(f'{script}\n{data}')
-        cur.executemany(script, data)
-        write_con.commit()
+        try:
+            script, data = write_queue.get()
+            cur.executemany(script, data)
+            write_con.commit()
+        except:
+            logger.exception('写入数据库出错')
 
 
 def refresh_search_progress(con: sqlite3.Connection):
     cur = con.cursor()
 
-    cur.execute("UPDATE keywords SET start_time=NULL, end_time=NULL")
+    cur.execute("UPDATE keyword_queries SET start_time=NULL, end_time=NULL, min_time=NULL")
     con.commit()
 
     cur.execute("SELECT DISTINCT(keyword) FROM search_results")
@@ -269,5 +305,19 @@ def refresh_search_progress(con: sqlite3.Connection):
         if not r: continue
         st = min(r)
         et = max(r)
-        cur.execute("UPDATE keywords SET start_time=?, end_time=? WHERE keyword=?", (st, et, keyword))
+        cur.execute("UPDATE keyword_queries SET start_time=?, end_time=? WHERE keyword=?", (st, et, keyword))
         con.commit()
+
+
+def get_no_data_posts(con: sqlite3.Connection, write_queue: Queue):
+    cur = con.cursor()
+    cur.execute(f'SELECT mid FROM posts WHERE data IS NULL')
+    r = cur.fetchall()
+
+    print("尝试补缺：", r)
+
+    for mid in r:
+        mid = str(mid[0])
+        print(mid)
+        json = get_post_json(mid, con)
+        if json: dump_post_content((json, mid), write_queue)
