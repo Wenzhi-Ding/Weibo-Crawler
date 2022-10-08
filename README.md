@@ -8,3 +8,19 @@
 - Comment：爬取某条微博的所有评论
 - Topic：爬取话题或超话内的微博
 - Trending：记录热搜榜
+
+## 使用
+
+若首次运行该爬虫或希望重置项目（清空数据库、日志、过期 Cookies 等），请先运行
+```bash
+python crawler/init.py
+```
+
+此后每次使用，用户只需编辑 `crawler.ini` 后，再运行
+```bash
+python crawler/run.py
+```
+
+## 依赖
+
+本爬虫完全以 Python 原生库完成，额外依赖仅 SQLite 3 一项。一般而言，Python 已经自带了对 SQLite 3 的支持。若提示找不到 SQLite 3，可以参考[该网页](https://www.runoob.com/sqlite/sqlite-installation.html)安装。
