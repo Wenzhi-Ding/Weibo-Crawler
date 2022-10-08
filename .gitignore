@@ -1,7 +1,8 @@
-dev.ipynb
+*.ipynb
 *.db
 __pycache__
 *.csv
 *.xlsx
-*cookies*
 *.log
+*.txt
+!requirements.txt

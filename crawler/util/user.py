@@ -135,3 +135,8 @@ def init_session(args):
         for ym in yms:
             cur_year, cur_month = divmod(ym, 100)
             query_month(uid, cur_year, cur_month)
+
+
+if __name__ == '__main__':
+    args = parse_args()
+    init_session(args)
