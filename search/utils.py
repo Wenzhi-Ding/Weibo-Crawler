@@ -17,7 +17,11 @@ import base62
 # from py_reminder import send_email, monitor
 from error_catcher import silent
 
-logging.basicConfig(filename=os.path.dirname(__file__) + '/../log', level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+ERROR_LOG = os.path.dirname(__file__) + '/../error.log'
+PROGRESS_LOG = os.path.dirname(__file__) + '/../progress.log'
+
+logging.basicConfig(filename=PROGRESS_LOG, level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/101.0.4951.64 Safari/537.36 Edg/101.0.1210.53'
@@ -53,7 +57,7 @@ def get_random_cookie():
     return random.choice(cookies)
 
 
-@silent(key_vars=['api', 'sub', 'name'], log_file=os.path.dirname(__file__) + '/../error_log')
+@silent(key_vars=['api', 'sub', 'name'], log_file=ERROR_LOG)
 def get_api(api: str, wait=2, check_cookie=False):
     sub, name = get_random_cookie()
     session = requests.Session()
@@ -61,7 +65,7 @@ def get_api(api: str, wait=2, check_cookie=False):
     adapter = HTTPAdapter(max_retries=retry)
     session.mount('http://', adapter)
     session.mount('https://', adapter)
-    r = session.get(api, headers=HEADERS, cookies={'SUB': sub})
+    r = session.get(api, headers=HEADERS, cookies={'SUB': sub}, timeout=10)
 
     time.sleep(random.randint(wait, wait + 2))
     if r.status_code in [200, 304]:
@@ -244,7 +248,7 @@ def add_keywords(keywords: List[str], write_queue: Queue):
     write_queue.put((f'INSERT OR IGNORE INTO keyword_queries(keyword) VALUES (?)', keywords))
 
 
-@silent(key_vars=['script'], log_file=os.path.dirname(__file__) + '/../error_log')
+@silent(key_vars=['script'], log_file=ERROR_LOG)
 def write_sqlite(write_queue: Queue):
     write_con = sqlite3.connect('weibo.db')
     log_print('数据库写入连接创建成功')
