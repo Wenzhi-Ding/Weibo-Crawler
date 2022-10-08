@@ -21,7 +21,7 @@ python crawler/init.py
 python crawler/run.py
 ```
 
-由于微博内容爬取绝大多数不需要使用Cookie，因此建议单独运行用户和搜索等爬虫，得到微博ID后，批量将微博ID分配至多台设备并行爬取。以此实现最少Cookie、最高效率。
+由于微博具体数据（Content）爬取绝大多数不需要使用 Cookie，因此建议单独运行用户（User）和搜索（Search）等爬虫，得到微博 ID 后，批量将微博 ID 分配至多台设备并行爬取具体数据，以此实现尽可能少 Cookie、尽可能高效率的爬取。
 
 ## 依赖
 
