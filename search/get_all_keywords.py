@@ -17,17 +17,12 @@ if __name__ == "__main__":
 
     utils.get_query_periods(START, END, con, task_queue)
     writer = Process(target=utils.write_sqlite, args=(write_queue,))
-    worker1 = Process(target=utils.search_period, args=(task_queue, write_queue, con, START, END, "worker1",))
-    # worker2 = Process(target=utils.search_period, args=(task_queue, write_queue, con, START, END, "worker2",))
+    worker1 = Process(target=utils.search_period, args=(task_queue, write_queue, con, START, END,))
 
 
     writer.start()
     worker1.start()
-    # worker2.start()
-
-    # writer.join()
 
     worker1.join()
-    # worker2.join()
 
     writer.terminate()
