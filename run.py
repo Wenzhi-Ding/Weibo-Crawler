@@ -1,14 +1,14 @@
 import sqlite3
 from multiprocessing import Process, Queue
 
-from util.util import write_sqlite, DB, parse_config
+from util.util import log_print, write_sqlite, parse_config, connect_db
 from util.search import get_query_periods, search_periods, get_keywords
 from util.content import get_post_contents
 
 cfg = parse_config()
 keywords = get_keywords() if cfg['keywords'] else []
 
-con = sqlite3.connect(DB)
+con = connect_db()
 print('数据库读取连接创建成功')
 
 if __name__ == "__main__":
@@ -39,3 +39,4 @@ if __name__ == "__main__":
             get_post_contents(con, write_queue, keywords)
     
     write.terminate()
+    log_print("所有任务执行完毕，退出程序")

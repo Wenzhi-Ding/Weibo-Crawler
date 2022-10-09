@@ -2,7 +2,7 @@ import sqlite3
 import time
 from typing import List
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 from multiprocessing import Queue
 
 from util.util import log_print, get_api, decode_mid, timestamp_to_query_time, query_time_to_timestamp, KEYWORDS
@@ -11,24 +11,56 @@ from util.util import log_print, get_api, decode_mid, timestamp_to_query_time, q
 def get_search_page(keyword: str, start: str, end: str, page: int):
     start = timestamp_to_query_time(start)
     end = timestamp_to_query_time(end, {'hours': 1})  # 实际查询时结束时间向上取整一小时
-    api = f'https://s.weibo.com/weibo?q={keyword}&typeall=1&suball=1&timescope=custom:{start}:{end}&page={page}'
+    api = f'https://s.weibo.com/weibo?q={keyword}&nodup=1&typeall=1&suball=1&timescope=custom:{start}:{end}&page={page}'
     log_print(f"查询API：{api}")
     r = get_api(api, check_cookie=True)
-    res = re.findall('(?<=<a href=").+?(?=".*wb_time">)', r)
-    data = []
-    for u in res:
-        u = u.split('/')
-        data.append((decode_mid(u[4][:9]), u[3]))  # (mid, uid)
+    posts = re.findall('"feed_list_item"[.\s\S]*?(?=<div class="m-footer">)', r)
+    if posts: 
+        posts = posts[0].split('"feed_list_item"')
+        posts = [x for x in posts if x]
+        data = [parse_post(post) for post in posts]
+        return data
+    
+    return []
 
-    timestamps = [x.strip() for x in re.findall('(?<=wb_time">)[.\S\s]+?(?=</a>)', r) if '前' not in x]
-    timestamps = [f'{datetime.now().year}年{x}' if '年' not in x else x  for x in timestamps]
-    timestamps = set([datetime.strptime(x, '%Y年%m月%d日 %H:%M') for x in timestamps])
 
-    return data, timestamps
+def parse_post(post):
+    url = re.findall('(?<=<a href="//weibo.com/).+?(?=".*wb_time">)', post)
+    uid, mid, *k = re.split('[/\?]', url[0]) if url else (None, None, [])
+    mid = decode_mid(mid) if mid else None
+
+    nn = re.findall('(?<=nick-name=").+?(?=")', post)
+    nn = nn[0] if nn else None
+
+    create_at = re.findall('(?<=click:wb_time">)[.\s\S]+?(?=</a>)', post)
+    create_at = parse_date(create_at[0]) if create_at else None
+
+    if "feed_list_content_full" in post:
+        p = re.findall('(?<="feed_list_content_full")[.\s\S]+?(?=</p>)', post)
+    else:
+        p = re.findall('(?<="feed_list_content")[.\s\S]+?(?=</p>)', post)
+
+    if p:
+        p = re.sub('<br.*?/>', '\n', p[0])
+        p = p.split('>\n', maxsplit=1)[1]
+        p = p.replace('<i class="wbicon">O</i>网页链接', '').replace('收起<i class="wbicon">d</i>', '').replace('<i class="wbicon">\ue627</i>', '##')
+        p = re.sub('<[a|/a|i|/i|img].*?>', '', p).replace('\u200b', '').replace('\u3000', '').strip()
+        p = p.replace('&#xe627;', '##')  # 用两个#号代替超话符号
+    else:
+        p = None
+
+    repost, comment = re.findall('(?<=</i></span>)[.\s\S]+?(?=</a></li>)', post)
+    repost = None if not repost else 0 if not repost.strip().isdigit() else int(repost)
+    comment = None if not comment else 0 if not comment.strip().isdigit() else int(comment)
+
+    attitude = re.findall('(?<=class="woo-like-count">)[.\s\S]+?(?=</span>)', post)
+    attitude = None if not attitude else 0 if not attitude[0].strip().isdigit() else int(attitude[0])
+
+    return mid, uid, nn, create_at, p, repost, comment, attitude
 
 
 def dump_posts(data: List[tuple], write_queue: Queue):
-    write_queue.put(("INSERT OR IGNORE INTO posts(mid, uid) VALUES (?, ?)", data))
+    write_queue.put((f'INSERT OR IGNORE INTO posts(mid, uid, nick_name, created_at, content, repost_count, comment_count, attitude_count) VALUES (?,?,?,?,?,?,?,?)', data))
 
 
 def dump_search_results(data: List[tuple], write_queue: Queue):
@@ -100,16 +132,17 @@ def search_periods(task_queue: Queue, write_queue: Queue, con: sqlite3.Connectio
         all_timestamps = set()
         for page in range(1, 51):
             # 获取搜索页
-            data, timestamps = get_search_page(keyword=keyword, start=start, end=end, page=page)
+            data = get_search_page(keyword=keyword, start=start, end=end, page=page)
             log_print(f"本页面共{len(data)}条数据")
             if not data: continue  # 无内容或获取失败则跳过该条
             dump_posts(data, write_queue)
 
             # 记录搜索结果
-            sr_data = [(keyword, mid) for mid, uid in data]
+            sr_data = [(keyword, mid) for mid, *_ in data]
             dump_search_results(sr_data, write_queue)
 
             # 记录搜索结果的时间戳
+            timestamps = set([create_at for _, _, _, create_at, *_ in data])
             all_timestamps |= timestamps
 
         min_time = min(all_timestamps) if all_timestamps else end  # 完全没有新内容时则视为停止
@@ -131,3 +164,20 @@ def get_keywords():
     if not keywords:
         raise Exception("关键词文件为空，请检查keywords.txt或crawler.ini中的keywords变量。")
     return keywords
+
+
+def parse_date(s):
+    s = s.strip()
+    if '秒前' in s:
+        return datetime.now() - timedelta(seconds=int(s[:-2]))
+    elif '分钟前' in s:
+        d = datetime.now() - timedelta(minutes=int(s[:-3]))
+    else:
+        if '今天' in s:
+            s = s.replace('今天', datetime.now().strftime('%Y年%m月%d日 '))
+        elif '年' not in s:
+            s = f'{datetime.now().year}年{s}'
+
+        s = datetime.strptime(s, '%Y年%m月%d日 %H:%M')
+
+    return s.strftime('%Y-%m-%d %H:%M:%S')

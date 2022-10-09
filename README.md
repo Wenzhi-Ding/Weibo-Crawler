@@ -9,20 +9,87 @@
 - Topic：爬取话题或超话内的微博
 - Trending：记录热搜榜
 
-## 使用
+该项目是业余练手用，其他模块作者本人未必有时间完成。非常欢迎发起 Pull Request！
 
-若首次运行该爬虫或希望重置项目（清空数据库、日志、过期 Cookies 等），请先运行
-```bash
-python crawler/init_project.py
-```
-
-此后每次使用，用户只需编辑 `crawler.ini` 后，再运行
-```bash
-python crawler/run.py
-```
-
-由于微博具体数据（Content）爬取绝大多数不需要使用 Cookie，因此建议单独运行用户（User）和搜索（Search）等爬虫，得到微博 ID 后，批量将微博 ID 分配至多台设备并行爬取具体数据，以此实现尽可能少 Cookie、尽可能高效率的爬取。
+如果使用过程中遇到问题，请在 GitHub 仓库的 Issues 板块提出。
 
 ## 依赖
 
 本爬虫完全以 Python 原生库完成，额外依赖仅 SQLite 3 一项。一般而言，Python 已经自带了对 SQLite 3 的支持。若提示找不到 SQLite 3，可以参考 [该网页](https://www.runoob.com/sqlite/sqlite-installation.html) 安装。
+
+
+## 使用
+
+若首次运行该爬虫或希望重置项目（清空数据库、日志、过期 Cookies 等），请先运行：
+```bash
+python tool/init_project.py
+```
+
+注意添加 Cookies 时，请先拷贝 Cookies 中的 SUB 字段，空一格后添加该 Cookie 的备注名，比如
+```text
+_2A25ORSaEDeRhGeFI41MY0ivFyz5IHXVtxkrDrDV8PUJbkNANLRH9kW1NfMwjopmpuwmawfJIJ0zXznaLFwihaXts 账号1
+```
+
+此后每次使用，用户只需编辑 `crawler.ini` 后，再运行：
+```bash
+python run.py
+```
+
+若需要中止程序，请在终端连续键入 `Ctrl +C` 直到程序退出。
+
+## 进阶爬取
+
+由于微博具体数据（Content）爬取绝大多数不需要使用 Cookie，因此建议单独运行用户（User）和搜索（Search）等爬虫，得到微博 ID 后，批量将微博 ID 分配至多台设备并行爬取具体数据，以此实现尽可能少 Cookie、尽可能高效率的爬取。
+
+拆分尚未完成具体数据下载的微博：
+```bash
+python tool/break.py
+```
+
+拆分后的数据会输出到 `break` 文件夹下。拷贝至各台计算机（服务器）后，重命名为 `weibo.db` 放在本项目的根目录。随后运行以下脚本即可自动下载：
+```bash
+python tool/get_content.py
+```
+
+分布于各服务器的抓取任务完成后，可以将 `weibo.db` 全部拷贝至某台服务器的 `merge` 文件夹下，运行以下脚本即可自动合并更新数据库：
+```bash
+python tool/merge.py
+```
+
+## 取用数据
+
+对于不熟悉 Python 的用户，可以直接运行以下脚本将 `posts` 表格导出为 CSV 文件：
+```bash
+python tool/export_post.py
+```
+
+需注意的是，该 CSV 文件用 Excel 或 WPS 打开会乱码，应在其他数据处理工具（如 Pandas、R、Stata 等）中直接打开。
+
+Python 用户可以修改上面的脚本导出 Parquet 或 Feather 等性能更好的格式。
+
+若需要取用 JSON 格式存储的博文细节数据，可以使用以下查询
+```python
+import sqlite3
+import pandas as pd
+
+con = sqlite3.connect('weibo.db')
+keyword = "完全二叉树"
+script = f"""
+    SELECT
+        posts.mid, posts.uid,
+        json_extract(posts.data,"$.created_at"),
+        json_extract(posts.data,"$.text_raw"),
+        json_extract(posts.data,"$.user.screen_name"),
+        json_extract(posts.data,"$.reposts_count"),
+        json_extract(posts.data,"$.comments_count"),
+        json_extract(posts.data,"$.attitudes_count")
+    FROM posts
+    INNER JOIN search_results ON posts.mid = search_results.mid
+    WHERE 
+        posts.data not null
+        AND search_results.keyword LIKE "%{keyword}%"
+    """
+df = pd.read_sql(script, con)
+```
+
+SQLite 的 `json_extract` 允许查询复杂结构的 JSON 数据。

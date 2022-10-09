@@ -1,3 +1,4 @@
+from datetime import datetime
 import sqlite3
 from multiprocessing import Queue
 from typing import List
@@ -20,7 +21,7 @@ def get_post_json(mid: str, con: sqlite3.Connection):
 
 
 def dump_post_content(data: tuple, write_queue: Queue):
-    write_queue.put(("UPDATE posts SET data=? WHERE mid=?", [data]))
+    write_queue.put(("UPDATE posts SET data=?, data_at=? WHERE mid=?", [data]))
 
 
 def dump_post_content_non_parallel(data: tuple, con: sqlite3.Connection):
@@ -43,4 +44,4 @@ def get_post_contents(con: sqlite3.Connection, write_queue: Queue, keywords: Lis
     for mid in r:
         mid = str(mid[0])
         json = get_post_json(mid, con)
-        if json: dump_post_content((json, mid), write_queue)
+        if json: dump_post_content((json, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), mid), write_queue)
