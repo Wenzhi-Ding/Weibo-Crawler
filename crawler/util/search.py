@@ -131,6 +131,3 @@ def get_keywords():
     if not keywords:
         raise Exception("关键词文件为空，请检查keywords.txt或crawler.ini中的keywords变量。")
     return keywords
-
-# def refresh_search_progress(con: sqlite3.Connection):
-#    算法整合清理search_progress表
