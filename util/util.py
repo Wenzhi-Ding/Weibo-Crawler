@@ -1,5 +1,7 @@
+import csv
 from multiprocessing import Queue
 import sqlite3
+from typing import List
 import requests
 import time
 import traceback
@@ -15,22 +17,34 @@ import configparser
 from .base62lite import encode, decode
 # from error_catcher import silent
 
-ROOT = os.path.dirname(__file__) + '/../..'
+ROOT = os.path.dirname(__file__) + '/..'
 DB = ROOT + '/weibo.db'
 COOKIES = ROOT + '/cookies.txt'
 CONFIG = ROOT + '/crawler.ini'
 KEYWORDS = ROOT + '/keywords.txt'
 
-LOG = os.path.dirname(__file__) + '/../log'
+LOG = ROOT + '/log'
 EXPIRED_COOKIES = LOG + '/expired_cookies.txt'
 ERROR_LOG = LOG + '/error.log'
 PROGRESS_LOG = LOG + '/progress.log'
+
+BREAK = ROOT + '/break'
+MERGE = ROOT + '/merge'
+OUTPUT = ROOT + '/output'
 
 CREATE_DB = os.path.dirname(__file__) + '/create_db.sql'
 
 HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/101.0.4951.64 Safari/537.36 Edg/101.0.1210.53'
 }
+
+
+def connect_db():
+    if os.path.isfile(DB):
+        con = sqlite3.connect(DB)
+        return con
+    init_project()
+    sys.exit("数据库不存在，已重新初始化项目")
 
 
 def decode_mid(mid: str):
@@ -141,8 +155,9 @@ def parse_config():
 
 
 def init_project():
-    if not os.path.exists(LOG):
-        os.mkdir(LOG)
+    for p in [LOG, MERGE]:
+        if not os.path.exists(p):
+            os.mkdir(p)
 
     if os.path.isfile(DB):
         rm = input('数据库已存在，是否删除？(y/n)：')
@@ -168,3 +183,14 @@ def init_project():
         if not os.path.isfile(file):
             with open(file, 'w') as f:
                 f.write('')
+
+    log_print("已完成初始化，请检查 crawler.ini 配置文件、keywords.txt 搜索关键词文件及 cookies.txt 登录凭证文件。")
+
+
+def write_csv(table: str, cur: sqlite3.Connection.cursor, header: List[str]):
+    if not os.path.exists(OUTPUT): os.mkdir(OUTPUT)
+    path = f'{OUTPUT}/{table}.csv'
+    with open(path, 'w+') as c:
+        writer = csv.writer(c)
+        writer.writerow(header)
+        writer.writerows(cur)

@@ -6,3 +6,7 @@ __pycache__
 *.log
 *.txt
 !requirements.txt
+*.html
+*.bak
+break
+merge

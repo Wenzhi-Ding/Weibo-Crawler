@@ -2,9 +2,15 @@
 CREATE TABLE IF NOT EXISTS posts (
     mid INTEGER PRIMARY KEY NOT NULL,
     uid INTEGER,
-    -- status INTEGER DEFAULT 0,
     data JSON,
-    update_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    nick_name TEXT,
+    created_at TIMESTAMP,
+    content TEXT,
+    repost_count INTEGER,
+    comment_count INTEGER,
+    attitude_count INTEGER,
+    abstract_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    data_at TIMESTAMP
 );
 
 -- users：记录每个用户的UID及数据爬取状态
