@@ -33,7 +33,7 @@ python tool/init_project.py
 ```bash
 python run.py
 ```
-
+aaaaa
 若需要中止程序，请在终端连续键入 `Ctrl+C` 直到程序退出。
 
 ## 进阶爬取
@@ -92,3 +92,11 @@ df = pd.read_sql(script, con)
 ```
 
 SQLite 的 `json_extract` 允许查询复杂结构的 JSON 数据。
+
+## 更新代码
+
+本项目在持续开发中，如果需要同步 GitHub 上更新的代码，请使用以下两条命令：
+```bash
+git reset --hard origin/master
+git pull origin master
+```
