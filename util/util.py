@@ -13,14 +13,15 @@ import sys
 import logging
 import os
 import configparser
+import re
 
-from .base62lite import encode, decode
+from .third_party.base62 import encode, decode
 # from error_catcher import silent
 
 ROOT = os.path.dirname(__file__) + '/..'
 DB = ROOT + '/weibo.db'
 COOKIES = ROOT + '/cookies.txt'
-CONFIG = ROOT + '/crawler.ini'
+CONFIG = ROOT + '/settings.ini'
 KEYWORDS = ROOT + '/keywords.txt'
 
 LOG = ROOT + '/log'
@@ -45,6 +46,18 @@ def connect_db():
         return con
     init_project()
     sys.exit("数据库不存在，已重新初始化项目")
+
+
+def parse_config():
+    config = configparser.ConfigParser()
+    config.read(CONFIG)
+    cfg = {}
+    for i in config:
+        for j in config[i]:
+            val = config[i][j]
+            if val.isdigit(): val = int(val)
+            cfg[j] = val
+    return cfg
 
 
 def decode_mid(mid: str):
@@ -76,9 +89,11 @@ def timestamp_to_query_time(timestamp, shift={}):
     return timestamp.strftime('%Y-%m-%d-%H')
 
 
+cfg = parse_config()
+
 # @silent(key_vars=['api', 'sub', 'name'], log_file=ERROR_LOG)
-def get_api(api: str, wait=2, check_cookie=False):
-    sub, name = get_random_cookie()
+def get_api(api: str, wait=cfg['wait'], check_cookie=False):
+    sub = get_random_cookie()
     session = requests.Session()
     retry = Retry(connect=3, backoff_factor=2)
     adapter = HTTPAdapter(max_retries=retry)
@@ -90,11 +105,11 @@ def get_api(api: str, wait=2, check_cookie=False):
     if r.status_code in [200, 304]:
         r = r.content.decode()
         if check_cookie and "$CONFIG[\'watermark\']" not in r:
-            log_print(f"{name}的Cookie可能过期")
+            log_print(f"该 Cookie 可能过期：{sub}")
             add_expired_cookie(sub)
         return r
     # raise ValueError('API未能成功访问。')
-    log_print(f'API未能成功访问；{api}')
+    log_print(f'API 未能成功访问；{api}')
 
 
 def log_print(s: str):
@@ -119,12 +134,13 @@ def add_expired_cookie(sub):
 def get_random_cookie():
     with open(COOKIES, 'r') as f:
         cookies = f.readlines()
-    cookies = [x.strip().split() for x in cookies]
-    cookies = [(sub, name) for sub, name in cookies if sub not in get_expired_cookies()]
+    cookies = [re.findall(r'(?<=SUB=).+?(?=;)', x) for x in cookies]
+    cookies = [x[0] for x in cookies if x]
+    cookies = [sub for sub in cookies if sub not in get_expired_cookies()]
     if not cookies:
         # send_email(task="没有可用COOKIE")
-        log_print("没有可用COOKIE")
-        raise Exception("没有可用COOKIE")
+        log_print("没有可用 Cookie")
+        raise Exception("没有可用 Cookie")
     return random.choice(cookies)
 
 
@@ -140,18 +156,6 @@ def write_sqlite(write_queue: Queue):
             write_con.commit()
         except:
             log_print(traceback.format_exc())
-
-
-def parse_config():
-    config = configparser.ConfigParser()
-    config.read(CONFIG)
-    cfg = {}
-    for i in config:
-        for j in config[i]:
-            val = config[i][j]
-            if val.isdigit(): val = int(val)
-            cfg[j] = val
-    return cfg
 
 
 def init_project():
@@ -184,7 +188,7 @@ def init_project():
             with open(file, 'w') as f:
                 f.write('')
 
-    log_print("已完成初始化，请检查 crawler.ini 配置文件、keywords.txt 搜索关键词文件及 cookies.txt 登录凭证文件。")
+    log_print("已完成初始化，请检查 settings.ini 配置文件、keywords.txt 搜索关键词文件及 cookies.txt 登录凭证文件。")
 
 
 def write_csv(table: str, cur: sqlite3.Connection.cursor, header: List[str]):
