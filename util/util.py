@@ -101,7 +101,7 @@ def get_api(api: str, wait=cfg['wait'], check_cookie=False):
     session.mount('https://', adapter)
     r = session.get(api, headers=HEADERS, cookies={'SUB': sub}, timeout=10)
 
-    time.sleep(random.randint(wait, wait + 2))
+    time.sleep(wait)
     if r.status_code in [200, 304]:
         r = r.content.decode()
         if check_cookie and "$CONFIG[\'watermark\']" not in r:
