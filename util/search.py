@@ -142,7 +142,7 @@ def search_periods(task_queue: Queue, write_queue: Queue, con: sqlite3.Connectio
             dump_search_results(sr_data, write_queue)
 
             # 记录搜索结果的时间戳
-            timestamps = set([create_at for _, _, _, create_at, *_ in data])
+            timestamps = set([create_at for _, _, _, create_at, *_ in data if create_at])
             all_timestamps |= timestamps
 
         min_time = min(all_timestamps) if all_timestamps else end  # 完全没有新内容时则视为停止

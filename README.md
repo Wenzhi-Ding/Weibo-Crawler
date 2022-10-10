@@ -15,7 +15,9 @@
 
 ## 依赖
 
-本爬虫完全以 Python 原生库完成，额外依赖仅 SQLite 3 一项。一般而言，Python 已经自带了对 SQLite 3 的支持。若提示找不到 SQLite 3，可以参考 [该网页](https://www.runoob.com/sqlite/sqlite-installation.html) 安装。
+本爬虫完全以 Python 标准库完成，额外依赖仅 SQLite 3 一项。一般而言，Python 已经自带了对 SQLite 3 的支持。若提示找不到 SQLite 3，可以参考 [该网页](https://www.runoob.com/sqlite/sqlite-installation.html) 安装。
+
+请使用 Python 3.6 以上的版本。
 
 
 ## 使用
@@ -25,17 +27,14 @@
 python tool/init_project.py
 ```
 
-注意添加 Cookies 时，请先拷贝 Cookies 中的 SUB 字段，空一格后添加该 Cookie 的备注名，比如
-```text
-_2A25ORSaEDeRhGeFI41MY0ivFyz5IHXVtxkrDrDV8PUJbkNANLRH9kW1NfMwjopmpuwmawfJIJ0zXznaLFwihaXts 账号1
-```
+对于 `cookies.txt` 文件，请先登录微博后，按 `F12` 打开检查工具，在“网络 (Network)”页面下，选择任意一条含 Cookies 的请求，右键“复制值”，粘贴进 `cookies.txt` 文件即可。该文件每行保存一个 Cookies，在运行时将自动随机调用。可以只放一个 Cookies。
 
-此后每次使用，用户只需编辑 `crawler.ini` 后，再运行：
+此后每次使用，用户只需编辑 `settings.ini` 后，再运行：
 ```bash
 python run.py
 ```
 
-若需要中止程序，请在终端连续键入 `Ctrl +C` 直到程序退出。
+若需要中止程序，请在终端连续键入 `Ctrl+C` 直到程序退出。
 
 ## 进阶爬取
 
