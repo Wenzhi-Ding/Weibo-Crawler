@@ -50,6 +50,17 @@ python tool/email_summary.py
 
 如果需要定时邮件报告，在 Linux 和 MacOS 中可以使用 [crontab](https://www.runoob.com/linux/linux-comm-crontab.html) 并配合上面的脚本命令。Windows 中可以使用 [计划任务](http://www.codebaoku.com/it-python/it-python-221509.html)。
 
+## 取用数据
+
+对于不熟悉 Python 的用户，可以直接运行以下脚本将 `posts` 表格导出为 CSV 文件：
+```bash
+python tool/export_post.py
+```
+
+需注意的是，该 CSV 文件用 Excel 或 WPS 打开会乱码，应在其他数据处理工具（如 Pandas、R、Stata 等）中直接打开。
+
+Python 用户可以修改上面的脚本导出 Parquet 或 Feather 等性能更好的格式。
+
 ## 更新
 
 本项目在持续开发中，如果需要同步 GitHub 上更新的代码，请使用以下脚本：
@@ -77,17 +88,6 @@ python tool/get_content.py
 ```bash
 python tool/merge.py
 ```
-
-## 取用数据
-
-对于不熟悉 Python 的用户，可以直接运行以下脚本将 `posts` 表格导出为 CSV 文件：
-```bash
-python tool/export_post.py
-```
-
-需注意的是，该 CSV 文件用 Excel 或 WPS 打开会乱码，应在其他数据处理工具（如 Pandas、R、Stata 等）中直接打开。
-
-Python 用户可以修改上面的脚本导出 Parquet 或 Feather 等性能更好的格式。
 
 若需要取用 JSON 格式存储的博文细节数据，可以使用以下查询
 ```python
