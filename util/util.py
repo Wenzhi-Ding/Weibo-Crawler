@@ -1,4 +1,5 @@
 import csv
+import functools
 from multiprocessing import Queue
 import sqlite3
 from typing import List
@@ -58,8 +59,14 @@ email_monitor = cfg['monitor']
 if email_monitor:
     from py_reminder import monitor
 else:
-    def monitor(s: str):
-        pass
+    def monitor(s: str, mute_success=False):
+        def decorator(func):
+            @functools.wraps(func)
+            def wrapper_decorator(*args, **kwargs):
+                value = func(*args, **kwargs)
+                return value
+            return wrapper_decorator
+        return decorator
 
 
 def connect_db():
@@ -100,7 +107,7 @@ def timestamp_to_query_time(timestamp, shift={}):
     
 
 # @silent(key_vars=['api', 'sub', 'name'], log_file=ERROR_LOG)
-@monitor('微博接口请求')
+@monitor('微博接口请求', mute_success=True)
 def get_api(api: str, wait=cfg['wait'], check_cookie=False):
     sub = get_random_cookie()
     session = requests.Session()
