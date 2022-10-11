@@ -19,8 +19,27 @@
 
 请使用 Python 3.6 以上的版本。
 
+## 下载
+
+### 不安装 Git
+
+若不使用 Git，可以直接下载代码的 [压缩包](https://github.com/Wenzhi-Ding/Weibo-Crawler/archive/refs/heads/master.zip) 并解压。
+
+### 安装 Git
+
+若使用 Windows 系统，请先安装 [Git](https://www.liaoxuefeng.com/wiki/896043488029600)。
+
+在命令行中（Windows 的 PowerShell、CMD；Linux 的 Bash；MacOS 的 Terminal）输入：
+```bash
+git clone https://github.com/Wenzhi-Ding/Weibo-Crawler.git
+```
 
 ## 使用
+
+每次使用首先要确保在命令行中已切换到项目文件夹，否则将无法正常使用以下任何脚本。比如项目位置是 `C:\Users\xxx\Desktop\Weibo-Crawler`，应首先：
+```bash
+cd C:\Users\xxx\Desktop\Weibo-Crawler
+```
 
 若首次运行该爬虫或希望重置项目（清空数据库、日志、过期 Cookies 等），请先运行：
 ```bash
@@ -61,12 +80,14 @@ python tool/export_post.py
 
 Python 用户可以修改上面的脚本导出 Parquet、Feather、Pickle 或 HDF5 等性能更好的格式。
 
-## 更新
+## 更新代码
 
 本项目在持续开发中，如果需要同步 GitHub 上更新的代码，请使用以下脚本：
 ```bash
 python tool/update_code.py
 ```
+
+注意，更新代码需要首先安装 [Git](https://www.liaoxuefeng.com/wiki/896043488029600)。
 
 ## 进阶使用
 
