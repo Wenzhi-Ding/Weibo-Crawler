@@ -73,7 +73,7 @@ python tool/summary.py
 python tool/email_summary.py
 ```
 
-在 `settings.ini` 中，如果将 `monitor` 选项设置为1，将在程序运行出错（如 Cookies 过期失效）时发邮件提醒。使用该选项同样需要首先配置 [py_reminder](https://github.com/Wenzhi-Ding/py_reminder)。
+在 `settings.ini` 中，如果将 `monitor` 选项设置为1，将在程序运行出错（如 Cookies 过期失效）或完成时发邮件提醒。使用该选项同样需要首先配置 [py_reminder](https://github.com/Wenzhi-Ding/py_reminder)。
 
 如果需要定时邮件报告，在 Linux 和 MacOS 中可以使用 [crontab](https://www.runoob.com/linux/linux-comm-crontab.html) 并配合上面的脚本命令。Windows 中可以使用 [计划任务](http://www.codebaoku.com/it-python/it-python-221509.html)。
 

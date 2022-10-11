@@ -3,8 +3,7 @@ import sqlite3
 from multiprocessing import Queue
 from typing import List
 
-from .util import get_api, log_print, encode_mid
-from .util import DB
+from util.util import get_api, log_print, encode_mid, monitor
 
 
 def get_post_json(mid: str, con: sqlite3.Connection):
@@ -30,6 +29,7 @@ def dump_post_content_non_parallel(data: tuple, con: sqlite3.Connection):
     con.commit()
 
 
+@monitor('微博JSON数据下载')
 def get_post_contents(con: sqlite3.Connection, write_queue: Queue, keywords: List[str]):
     cur = con.cursor()
     if not keywords:  # 对所有未完成的微博进行内容爬取

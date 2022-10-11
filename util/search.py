@@ -5,7 +5,7 @@ import re
 from datetime import datetime, timedelta
 from multiprocessing import Queue
 
-from util.util import log_print, get_api, decode_mid, timestamp_to_query_time, query_time_to_timestamp, KEYWORDS
+from util.util import log_print, get_api, decode_mid, timestamp_to_query_time, query_time_to_timestamp, KEYWORDS, monitor
 
 
 def get_search_page(keyword: str, start: str, end: str, page: int):
@@ -122,36 +122,6 @@ def break_query_period(keyword: str, start: str, end: str, con: sqlite3.Connecti
     return periods
 
 
-def search_periods(task_queue: Queue, write_queue: Queue, con: sqlite3.Connection, START, END, keywords) -> bool:
-    while True:
-        time.sleep(3)  # 留足够时间等队列更新
-        if task_queue.empty():  # 更新完后仍然无任务则退出
-            return True
-        else:
-            keyword, start, end = task_queue.get()
-        all_timestamps = set()
-        for page in range(1, 51):
-            # 获取搜索页
-            data = get_search_page(keyword=keyword, start=start, end=end, page=page)
-            log_print(f"本页面共{len(data)}条数据")
-            if not data: continue  # 无内容或获取失败则跳过该条
-            dump_posts(data, write_queue)
-
-            # 记录搜索结果
-            sr_data = [(keyword, mid) for mid, *_ in data]
-            dump_search_results(sr_data, write_queue)
-
-            # 记录搜索结果的时间戳
-            timestamps = set([create_at for _, _, _, create_at, *_ in data if create_at])
-            all_timestamps |= timestamps
-
-        min_time = min(all_timestamps) if all_timestamps else end  # 完全没有新内容时则视为停止
-        update_keyword_progress(keyword=keyword, start_time=start, min_time=min_time, end_time=end, write_queue=write_queue)
-        time.sleep(3)  # 留足够时间等writer更新完数据库
-
-        if task_queue.empty(): get_query_periods(START, END, con, task_queue, keywords)  # 如果队列已空，则更新队列
-
-
 def add_keywords(keywords: List[str], write_queue: Queue):
     write_queue.put((f'INSERT OR IGNORE INTO keyword_queries(keyword) VALUES (?)', keywords))
 
@@ -181,3 +151,34 @@ def parse_date(s):
         s = datetime.strptime(s, '%Y年%m月%d日 %H:%M')
 
     return s.strftime('%Y-%m-%d %H:%M:%S')
+
+
+@monitor('微博关键词搜索')
+def search_periods(task_queue: Queue, write_queue: Queue, con: sqlite3.Connection, START, END, keywords) -> bool:
+    while True:
+        time.sleep(3)  # 留足够时间等队列更新
+        if task_queue.empty():  # 更新完后仍然无任务则退出
+            return True
+        else:
+            keyword, start, end = task_queue.get()
+        all_timestamps = set()
+        for page in range(1, 51):
+            # 获取搜索页
+            data = get_search_page(keyword=keyword, start=start, end=end, page=page)
+            log_print(f"本页面共{len(data)}条数据")
+            if not data: continue  # 无内容或获取失败则跳过该条
+            dump_posts(data, write_queue)
+
+            # 记录搜索结果
+            sr_data = [(keyword, mid) for mid, *_ in data]
+            dump_search_results(sr_data, write_queue)
+
+            # 记录搜索结果的时间戳
+            timestamps = set([create_at for _, _, _, create_at, *_ in data if create_at])
+            all_timestamps |= timestamps
+
+        min_time = min(all_timestamps) if all_timestamps else end  # 完全没有新内容时则视为停止
+        update_keyword_progress(keyword=keyword, start_time=start, min_time=min_time, end_time=end, write_queue=write_queue)
+        time.sleep(3)  # 留足够时间等writer更新完数据库
+
+        if task_queue.empty(): get_query_periods(START, END, con, task_queue, keywords)  # 如果队列已空，则更新队列
