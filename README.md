@@ -36,12 +36,18 @@ python run.py
 
 若需要中止程序，请在终端连续键入 `Ctrl+C` 直到程序退出。
 
+在任何时候，如果需要监控爬虫进展，可以使用以下脚本：
+```bash
+python tool/summary.py
+```
+
+
 本项目在持续开发中，如果需要同步 GitHub 上更新的代码，请使用以下脚本：
 ```bash
 python tool/update_code.py
 ```
 
-## 进阶爬取
+## 进阶使用
 
 由于微博具体数据（Content）爬取绝大多数不需要使用 Cookie，因此建议单独运行用户（User）和搜索（Search）等爬虫，得到微博 ID 后，批量将微博 ID 分配至多台设备并行爬取具体数据，以此实现尽可能少 Cookie、尽可能高效率的爬取。
 
@@ -59,6 +65,14 @@ python tool/get_content.py
 ```bash
 python tool/merge.py
 ```
+
+如果需要以邮件形式报告爬虫进展，可以首先安装并配置 [py_reminder](https://github.com/Wenzhi-Ding/py_reminder)，然后运行：
+```bash
+python tool/email_summary.py
+```
+
+如果需要定时邮件报告，在 Linux 和 MacOS 中可以使用 [crontab](https://www.runoob.com/linux/linux-comm-crontab.html) 并配合上面的脚本命令。
+
 
 ## 取用数据
 
