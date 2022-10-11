@@ -1,4 +1,3 @@
-import sqlite3
 from multiprocessing import Process, Queue
 
 from util.util import log_print, write_sqlite, parse_config, connect_db
