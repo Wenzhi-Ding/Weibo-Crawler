@@ -57,9 +57,9 @@ python tool/email_summary.py
 python tool/export_post.py
 ```
 
-需注意的是，该 CSV 文件用 Excel 或 WPS 打开会乱码，应在其他数据处理工具（如 Pandas、R、Stata 等）中直接打开。
+需注意的是，该 CSV 文件用 Excel 或 WPS 打开可能会乱码，建议在其他数据处理工具（如 Pandas、R、Stata 等）中直接打开。
 
-Python 用户可以修改上面的脚本导出 Parquet 或 Feather 等性能更好的格式。
+Python 用户可以修改上面的脚本导出 Parquet、Feather、Pickle 或 HDF5 等性能更好的格式。
 
 ## 更新
 
