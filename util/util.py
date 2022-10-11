@@ -40,14 +40,6 @@ HEADERS = {
 }
 
 
-def connect_db():
-    if os.path.isfile(DB):
-        con = sqlite3.connect(DB)
-        return con
-    init_project()
-    sys.exit("数据库不存在，已重新初始化项目")
-
-
 def parse_config():
     config = configparser.ConfigParser()
     config.read(CONFIG)
@@ -58,6 +50,24 @@ def parse_config():
             if val.isdigit(): val = int(val)
             cfg[j] = val
     return cfg
+
+
+cfg = parse_config()
+email_monitor = cfg['monitor']
+
+if email_monitor:
+    from py_reminder import monitor
+else:
+    def monitor(s: str):
+        pass
+
+
+def connect_db():
+    if os.path.isfile(DB):
+        con = sqlite3.connect(DB)
+        return con
+    init_project()
+    sys.exit("数据库不存在，已重新初始化项目")
 
 
 def decode_mid(mid: str):
@@ -87,11 +97,10 @@ def timestamp_to_query_time(timestamp, shift={}):
     if shift:
         timestamp += timedelta(**shift)
     return timestamp.strftime('%Y-%m-%d-%H')
-
-
-cfg = parse_config()
+    
 
 # @silent(key_vars=['api', 'sub', 'name'], log_file=ERROR_LOG)
+@monitor('微博接口请求')
 def get_api(api: str, wait=cfg['wait'], check_cookie=False):
     sub = get_random_cookie()
     session = requests.Session()
