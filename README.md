@@ -29,7 +29,13 @@
 
 若使用 Windows 系统，请先安装 [Git](https://www.liaoxuefeng.com/wiki/896043488029600)。
 
-在命令行中（Windows 的 PowerShell、CMD；Linux 的 Bash；MacOS 的 Terminal）输入：
+在命令行中（Windows 的 PowerShell、CMD；Linux 的 Bash；MacOS 的 Terminal）先切换至你希望存放项目的路径：
+```bash
+cd C:\Users\xxx\Desktop
+```
+
+然后运行此命令下载项目：
+
 ```bash
 git clone https://github.com/Wenzhi-Ding/Weibo-Crawler.git
 ```
