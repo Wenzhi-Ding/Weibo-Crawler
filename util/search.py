@@ -153,7 +153,7 @@ def parse_date(s):
     return s.strftime('%Y-%m-%d %H:%M:%S')
 
 
-@monitor('微博关键词搜索')
+@monitor('微博关键词搜索', mute_success=False)
 def search_periods(task_queue: Queue, write_queue: Queue, con: sqlite3.Connection, START, END, keywords) -> bool:
     while True:
         time.sleep(3)  # 留足够时间等队列更新
