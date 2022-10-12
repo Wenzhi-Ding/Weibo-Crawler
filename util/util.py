@@ -161,13 +161,14 @@ def get_random_cookie():
 
 
 # @silent(key_vars=['script'], log_file=ERROR_LOG)
+@monitor("微博爬虫写入进程", mute_success=True)
 def write_sqlite(write_queue: Queue):
     write_con = sqlite3.connect('weibo.db')
     log_print('数据库写入连接创建成功')
     cur = write_con.cursor()
     while True:
         try:
-            script, data = write_queue.get()
+            script, data = write_queue.get(timeout=180)
             cur.executemany(script, data)
             write_con.commit()
         except:
