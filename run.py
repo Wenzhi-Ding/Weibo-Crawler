@@ -38,4 +38,4 @@ if __name__ == "__main__":
             get_post_contents(con, write_queue, keywords)
     
     write.terminate()
-    log_print("所有任务执行完毕，退出程序")
+    log_print("任务结束，退出程序")
