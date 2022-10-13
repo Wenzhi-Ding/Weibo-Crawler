@@ -76,12 +76,12 @@ def get_query_periods(start: str, end: str, con: sqlite3.Connection, task_queue:
     start = query_time_to_timestamp(start)
     end = query_time_to_timestamp(end)
     if not keywords:
-        log_print("查询待查关键词")
+        log_print("查询数据库中未完成关键词")
         cur.execute(f'SELECT keyword FROM keyword_queries')
         r = cur.fetchall()
         keywords = set([x[0] for x in r])
     else:
-        log_print("使用指定关键词")
+        log_print("使用指定 keywords.txt 中关键词")
 
     # 更新待搜索队列
     log_print(f"共{len(keywords)}个关键词: {','.join(keywords)}")

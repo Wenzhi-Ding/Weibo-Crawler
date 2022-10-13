@@ -59,7 +59,7 @@ python tool/init_project.py
 python run.py
 ```
 
-若需要中止程序，请在终端连续键入 `Ctrl+C` 直到程序退出。
+若需要中止程序，请在终端键入 `Ctrl+C` 使程序退出。
 
 ## 报告
 
@@ -68,14 +68,13 @@ python run.py
 python tool/summary.py
 ```
 
-如果需要以邮件形式报告爬虫进展，可以首先安装并配置 [py_reminder](https://github.com/Wenzhi-Ding/py_reminder)，然后运行：
-```bash
-python tool/email_summary.py
-```
+在 `settings.ini` 中，如果将 `monitor` 选项设置为1，程序将在以下情况发送邮件：
+- 每隔一段时间发送一次爬取进度报告（由 `settings.ini` 中的 `interval` 参数决定间隔）
+- 运行出错（如 Cookies 过期失效）
+- 爬取任务完成
 
-在 `settings.ini` 中，如果将 `monitor` 选项设置为1，将在程序运行出错（如 Cookies 过期失效）或完成时发邮件提醒。使用该选项同样需要首先配置 [py_reminder](https://github.com/Wenzhi-Ding/py_reminder)。
+使用该选项需要首先配置 [py_reminder](https://github.com/Wenzhi-Ding/py_reminder)。
 
-如果需要定时邮件报告，在 Linux 和 MacOS 中可以使用 [crontab](https://www.runoob.com/linux/linux-comm-crontab.html) 并配合上面的脚本命令。Windows 中可以使用 [计划任务](http://www.codebaoku.com/it-python/it-python-221509.html)。
 
 ## 取用数据
 

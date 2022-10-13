@@ -171,6 +171,7 @@ def write_sqlite(write_queue: Queue):
             script, data = write_queue.get(timeout=180)
             cur.executemany(script, data)
             write_con.commit()
+            time.sleep(1)
         except:
             log_print(traceback.format_exc())
 
