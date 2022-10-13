@@ -73,7 +73,7 @@ python tool/summary.py
 - 运行出错（如 Cookies 过期失效）
 - 爬取任务完成
 
-使用该选项需要首先配置 [py_reminder](https://github.com/Wenzhi-Ding/py_reminder)。
+使用该选项需要首先配置 [py_reminder](https://github.com/Wenzhi-Ding/py_reminder)。推荐使用 163 邮箱作为报告的发送邮箱（已经稳定使用 3 年）。
 
 
 ## 取用数据
