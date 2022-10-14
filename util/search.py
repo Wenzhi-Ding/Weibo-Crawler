@@ -90,9 +90,9 @@ def get_query_periods(start: str, end: str, con: sqlite3.Connection, task_queue:
         for period in periods:
             cur.execute(f'SELECT keyword FROM keyword_queries WHERE keyword=? AND start_time=? AND end_time=?', (keyword, period[1], period[2]))
             if cur.fetchall():
-                log_print(f"关键词{keyword}在{period[1]}~{period[2]}已经查询过，不加入队列")
+                log_print(f"关键词 {keyword} 在 {period[1]}~{period[2]} 已经查询过，不加入队列")
                 continue
-            log_print(f"关键词{keyword}在{period[1]}~{period[2]}未查询过，加入队列")
+            log_print(f"关键词 {keyword} 在 {period[1]}~{period[2]} 未查询过，加入队列")
             task_queue.put(period)
 
 
@@ -127,12 +127,12 @@ def add_keywords(keywords: List[str], write_queue: Queue):
 
 
 def get_keywords():
-    with open(KEYWORDS, 'r') as f:
+    with open(KEYWORDS, 'r', encoding='utf-8') as f:
         keywords = f.readlines()
     keywords = [x.strip() for x in keywords]
     keywords = [x for x in keywords if x]
     if not keywords:
-        raise Exception("关键词文件为空，请检查keywords.txt或crawler.ini中的keywords变量。")
+        raise Exception("关键词文件为空，请检查 keywords.txt 或 crawler.ini 中的 keywords 变量。")
     return keywords
 
 
@@ -165,7 +165,7 @@ def search_periods(task_queue: Queue, write_queue: Queue, con: sqlite3.Connectio
         for page in range(1, 51):
             # 获取搜索页
             data = get_search_page(keyword=keyword, start=start, end=end, page=page)
-            log_print(f"本页面共{len(data)}条数据")
+            log_print(f"本页面共 {len(data)} 条数据")
             if not data: continue  # 无内容或获取失败则跳过该条
             dump_posts(data, write_queue)
 

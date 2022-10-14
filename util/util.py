@@ -43,7 +43,7 @@ HEADERS = {
 
 def parse_config():
     config = configparser.ConfigParser()
-    config.read(CONFIG)
+    config.read(CONFIG, encoding='utf-8')
     cfg = {}
     for i in config:
         for j in config[i]:
@@ -135,20 +135,20 @@ def log_print(s: str):
 
 
 def get_expired_cookies():
-    with open(EXPIRED_COOKIES, 'r') as f:
+    with open(EXPIRED_COOKIES, 'r', encoding='utf-8') as f:
         cookies = f.readlines()
     cookies = [x.strip() for x in cookies]
     return cookies
 
 
 def add_expired_cookie(sub):
-    with open(EXPIRED_COOKIES, 'a') as f:
+    with open(EXPIRED_COOKIES, 'a', encoding='utf-8') as f:
         f.write(f'{sub}\n')
 
 
 # @silent(key_vars=[], log_file=ERROR_LOG)
 def get_random_cookie():
-    with open(COOKIES, 'r') as f:
+    with open(COOKIES, 'r', encoding='utf-8') as f:
         cookies = f.readlines()
     cookies = [re.findall(r'(?<=SUB=).+?(?=;)', x) for x in cookies]
     cookies = [x[0] for x in cookies if x]
@@ -193,7 +193,7 @@ def init_project():
     if not os.path.isfile(DB):
         con = sqlite3.connect(DB)
         cur = con.cursor()
-        with open(CREATE_DB, 'r') as f:
+        with open(CREATE_DB, 'r', encoding='utf-8') as f:
             cur.executescript(f.read())
 
     if os.path.isfile(ERROR_LOG) or os.path.isfile(PROGRESS_LOG):
@@ -203,7 +203,7 @@ def init_project():
 
     for file in [COOKIES, EXPIRED_COOKIES, KEYWORDS]:
         if not os.path.isfile(file):
-            with open(file, 'w') as f:
+            with open(file, 'w', encoding='utf-8') as f:
                 f.write('')
 
     log_print("已完成初始化，请检查 settings.ini 配置文件、keywords.txt 搜索关键词文件及 cookies.txt 登录凭证文件。")
@@ -212,7 +212,7 @@ def init_project():
 def write_csv(table: str, cur: sqlite3.Connection.cursor, header: List[str]):
     if not os.path.exists(OUTPUT): os.mkdir(OUTPUT)
     path = f'{OUTPUT}/{table}.csv'
-    with open(path, 'w+') as c:
+    with open(path, 'w+', encoding='utf-8') as c:
         writer = csv.writer(c)
         writer.writerow(header)
         writer.writerows(cur)
