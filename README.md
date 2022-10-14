@@ -42,22 +42,36 @@ git clone https://github.com/Wenzhi-Ding/Weibo-Crawler.git
 
 ## 使用
 
+1. 切换目录
+
 每次使用首先要确保在命令行中已切换到项目文件夹，否则将无法正常使用以下任何脚本。比如项目位置是 `C:\Users\xxx\Desktop\Weibo-Crawler`，应首先：
 ```bash
 cd C:\Users\xxx\Desktop\Weibo-Crawler
 ```
+
+2. 初始化项目
 
 若首次运行该爬虫或希望重置项目（清空数据库、日志、过期 Cookies 等），请先运行：
 ```bash
 python tool/init_project.py
 ```
 
+3. Cookies
+
 对于 `cookies.txt` 文件，请先登录微博后，按 `F12` 打开检查工具，在“网络 (Network)”页面下，选择任意一条含 Cookies 的请求，右键“复制值”，粘贴进 `cookies.txt` 文件即可。该文件每行保存一个 Cookies，在运行时将自动随机调用。可以只放一个 Cookies。
 
-此后每次使用，用户只需编辑 `settings.ini` 后，再运行：
+4. 搜索关键词
+
+如果使用关键词搜索爬虫，需要将关键词放入 `keywords.txt` 中。
+
+5. 运行爬虫
+
+此后每次使用，用户只需运行（请先确保 `settings.ini` 已经妥善设置）：
 ```bash
 python run.py
 ```
+
+6. 中止爬虫
 
 若需要中止程序，请在终端键入 `Ctrl+C` 使程序退出。
 
