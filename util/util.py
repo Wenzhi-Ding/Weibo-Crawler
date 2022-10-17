@@ -209,9 +209,16 @@ def init_project():
     log_print("已完成初始化，请检查 settings.ini 配置文件、keywords.txt 搜索关键词文件及 cookies.txt 登录凭证文件。")
 
 
-def write_csv(table: str, cur: sqlite3.Connection.cursor, header: List[str]):
-    if not os.path.exists(OUTPUT): os.mkdir(OUTPUT)
+def write_csv(table: str, cur: sqlite3.Connection.cursor, header: List[str], keyword=''):
+    if not os.path.exists(OUTPUT):
+        os.mkdir(OUTPUT)
     path = f'{OUTPUT}/{table}.csv'
+
+    if keyword:
+        output = OUTPUT + os.sep + keyword
+        if not os.path.exists(output): os.mkdir(output)
+        path = f'{output}/{keyword}.csv'
+        
     with open(path, 'w+', encoding='utf-8') as c:
         writer = csv.writer(c)
         writer.writerow(header)
