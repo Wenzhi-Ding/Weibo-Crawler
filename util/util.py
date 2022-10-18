@@ -57,7 +57,7 @@ cfg = parse_config()
 email_monitor = cfg['monitor']
 
 if email_monitor:
-    from py_reminder import monitor
+    from py_reminder import monitor, send_email
 else:
     def monitor(s: str, mute_success=False):
         def decorator(func):
@@ -115,7 +115,12 @@ def get_api(api: str, wait=cfg['wait'], check_cookie=False):
     adapter = HTTPAdapter(max_retries=retry)
     session.mount('http://', adapter)
     session.mount('https://', adapter)
-    r = session.get(api, headers=HEADERS, cookies={'SUB': sub}, timeout=10)
+    try:
+        r = session.get(api, headers=HEADERS, cookies={'SUB': sub}, timeout=60)
+    except requests.exceptions.ConnectionError as e:
+        log_print(f'ConnectionError: {e}')
+        time.sleep(wait)
+        send_email('ConnectionError', kwargs={'e': e, 'api': api})
 
     time.sleep(wait)
     if r.status_code in [200, 304]:
