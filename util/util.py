@@ -117,19 +117,17 @@ def get_api(api: str, wait=cfg['wait'], check_cookie=False):
     session.mount('https://', adapter)
     try:
         r = session.get(api, headers=HEADERS, cookies={'SUB': sub}, timeout=60)
+        time.sleep(wait)
+        if r.status_code in [200, 304]:
+            r = r.content.decode()
+            if check_cookie and "$CONFIG[\'watermark\']" not in r:
+                log_print(f"该 Cookie 可能过期：{sub}")
+                add_expired_cookie(sub)
+            return r
     except requests.exceptions.ConnectionError as e:
         log_print(f'ConnectionError: {e}')
         time.sleep(wait)
         send_email('ConnectionError', kwargs={'e': e, 'api': api})
-
-    time.sleep(wait)
-    if r.status_code in [200, 304]:
-        r = r.content.decode()
-        if check_cookie and "$CONFIG[\'watermark\']" not in r:
-            log_print(f"该 Cookie 可能过期：{sub}")
-            add_expired_cookie(sub)
-        return r
-    # raise ValueError('API未能成功访问。')
     log_print(f'API 未能成功访问；{api}')
 
 
