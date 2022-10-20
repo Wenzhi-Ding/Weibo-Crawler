@@ -129,6 +129,7 @@ def get_api(api: str, wait=cfg['wait'], check_cookie=False):
         time.sleep(wait)
         send_email('ConnectionError', kwargs={'e': e, 'api': api})
     log_print(f'API 未能成功访问；{api}')
+    return ""
 
 
 def log_print(s: str):
