@@ -28,7 +28,7 @@ if __name__ == "__main__":
             valid_mids = [(int(mid),) for mid in mids if len(mid) == 16 and mid.isdigit()]
             log_print(f"mids.txt 中共 {len(valid_mids)} 个有效微博 ID")
             cur = con.cursor()
-            cur.executemany("INSERT OR IGNORE INTO posts(mid) VALUES (?)", )
+            cur.executemany("INSERT OR IGNORE INTO posts(mid) VALUES (?)", valid_mids)
             con.commit()
 
         if cfg['multi_process']:
