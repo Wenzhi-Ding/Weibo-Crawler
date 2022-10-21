@@ -24,6 +24,7 @@ DB = ROOT + '/weibo.db'
 COOKIES = ROOT + '/cookies.txt'
 CONFIG = ROOT + '/settings.ini'
 KEYWORDS = ROOT + '/keywords.txt'
+MIDS = ROOT + '/mids.txt'
 
 LOG = ROOT + '/log'
 EXPIRED_COOKIES = LOG + '/expired_cookies.txt'
