@@ -131,6 +131,16 @@ python tool/get_content.py
 python tool/merge.py
 ```
 
+此外，还可以通过在根目录下增加 `mids.txt` 文件，并在其中放入 16 位的微博数字 ID 的方式，指定爬取这些微博的 JSON 数据。命令同样为：
+```bash
+python tool/get_content.py
+```
+
+使用以下脚本可以按 `mids.txt` 文件导出 JSON 数据：
+```bash
+python tool/export_json_by_mids.py
+```
+
 若需要取用 JSON 格式存储的博文细节数据，可以使用以下查询
 ```python
 import sqlite3
