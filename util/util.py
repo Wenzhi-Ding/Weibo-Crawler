@@ -110,14 +110,15 @@ def timestamp_to_query_time(timestamp, shift={}):
 # @silent(key_vars=['api', 'sub', 'name'], log_file=ERROR_LOG)
 @monitor('微博接口请求', mute_success=True)
 def get_api(api: str, wait=cfg['wait'], check_cookie=False):
-    sub = get_random_cookie()
+    if check_cookie: sub = get_random_cookie()
     session = requests.Session()
     retry = Retry(connect=3, backoff_factor=2)
     adapter = HTTPAdapter(max_retries=retry)
     session.mount('http://', adapter)
     session.mount('https://', adapter)
     try:
-        r = session.get(api, headers=HEADERS, cookies={'SUB': sub}, timeout=60)
+        if check_cookie: r = session.get(api, headers=HEADERS, cookies={'SUB': sub}, timeout=60)
+        else: r = session.get(api, headers=HEADERS, timeout=60)
         time.sleep(wait)
         if r.status_code in [200, 304]:
             r = r.content.decode()
