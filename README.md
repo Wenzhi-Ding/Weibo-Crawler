@@ -136,6 +136,11 @@ python tool/merge.py
 python tool/get_content.py
 ```
 
+使用以下脚本可以按 `mids.txt` 文件导出 JSON 数据：
+```bash
+python tool/export_json_by_mids.py
+```
+
 若需要取用 JSON 格式存储的博文细节数据，可以使用以下查询
 ```python
 import sqlite3
