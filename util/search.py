@@ -49,7 +49,7 @@ def parse_post(post):
     else:
         p = None
 
-    repost, comment = re.findall('(?<=</i></span>)[.\s\S]+?(?=</a></li>)', post)
+    repost, comment = re.findall('(?<=</i></span>)[.\s\S]+?(?=</a></li>)', post)[-2:]
     repost = None if not repost else 0 if not repost.strip().isdigit() else int(repost)
     comment = None if not comment else 0 if not comment.strip().isdigit() else int(comment)
 
