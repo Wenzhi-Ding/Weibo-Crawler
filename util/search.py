@@ -5,7 +5,9 @@ import re
 from datetime import datetime, timedelta
 from multiprocessing import Queue
 
-from util.util import log_print, get_api, decode_mid, timestamp_to_query_time, query_time_to_timestamp, KEYWORDS, monitor
+from util.util import log_print, get_api, decode_mid, timestamp_to_query_time, query_time_to_timestamp, KEYWORDS, monitor, parse_config
+
+cfg = parse_config()
 
 
 def get_search_page(keyword: str, start: str, end: str, page: int):
@@ -83,17 +85,22 @@ def get_query_periods(start: str, end: str, con: sqlite3.Connection, task_queue:
     else:
         log_print("使用指定 keywords.txt 中关键词")
 
-    # 更新待搜索队列
-    log_print(f"共{len(keywords)}个关键词: {','.join(keywords)}")
+    log_print(f"共 {len(keywords)} 个关键词: {','.join(keywords)}")
     for keyword in keywords:
         periods = [x for x in break_query_period(keyword, start, end, con) if x]
-        for period in periods:
-            cur.execute(f'SELECT keyword FROM keyword_queries WHERE keyword=? AND start_time=? AND end_time=?', (keyword, period[1], period[2]))
-            if cur.fetchall():
-                log_print(f"关键词 {keyword} 在 {period[1]}~{period[2]} 已经查询过，不加入队列")
-                continue
-            log_print(f"关键词 {keyword} 在 {period[1]}~{period[2]} 未查询过，加入队列")
-            task_queue.put(period)
+        add_to_queue(task_queue, periods, con)
+
+
+def add_to_queue(task_queue: Queue, periods, con: sqlite3.Connection):
+    # 更新待搜索队列
+    cur = con.cursor()
+    for period in periods:
+        cur.execute(f'SELECT keyword FROM keyword_queries WHERE keyword=? AND start_time=? AND end_time=?', period)
+        if cur.fetchall():
+            log_print(f"关键词 {period[0]} 在 {period[1]}~{period[2]} 已经查询过，不加入队列")
+            continue
+        log_print(f"关键词 {period[0]} 在 {period[1]}~{period[2]} 未查询过，加入队列")
+        task_queue.put(period)
 
 
 def break_query_period(keyword: str, start: str, end: str, con: sqlite3.Connection):
@@ -122,6 +129,21 @@ def break_query_period(keyword: str, start: str, end: str, con: sqlite3.Connecti
     return periods
 
 
+def get_gap_periods(task_queue, con):
+    cur = con.cursor()
+    cur.execute('select keyword from search_results')
+    keywords = [row[0] for row in set(cur.fetchall())]
+
+    for kw in keywords:
+        cur.execute(f'select created_at from posts inner join search_results on posts.mid = search_results.mid where search_results.keyword = "{kw}"')
+        ts = [datetime.strptime(row[0], '%Y-%m-%d %H:%M:%S') for row in set(cur.fetchall())]
+        ts.sort()
+
+        for i in range(len(ts) - 1):
+            if ts[i + 1] - ts[i] > timedelta(days=cfg['tolerate_gap']):
+                add_to_queue(task_queue, [(kw, ts[i], ts[i + 1])], con)
+
+
 def add_keywords(keywords: List[str], write_queue: Queue):
     write_queue.put((f'INSERT OR IGNORE INTO keyword_queries(keyword) VALUES (?)', keywords))
 
@@ -141,7 +163,7 @@ def parse_date(s):
     if '秒前' in s:
         return datetime.now() - timedelta(seconds=int(s[:-2]))
     elif '分钟前' in s:
-        d = datetime.now() - timedelta(minutes=int(s[:-3]))
+        s = datetime.now() - timedelta(minutes=int(s[:-3]))
     else:
         if '今天' in s:
             s = s.replace('今天', datetime.now().strftime('%Y年%m月%d日 '))
@@ -154,7 +176,7 @@ def parse_date(s):
 
 
 @monitor('微博关键词搜索', mute_success=False)
-def search_periods(task_queue: Queue, write_queue: Queue, con: sqlite3.Connection, START, END, keywords) -> bool:
+def search_periods(task_queue: Queue, write_queue: Queue, con: sqlite3.Connection, START, END, keywords, check_gap=False) -> bool:
     while True:
         time.sleep(3)  # 留足够时间等队列更新
         if task_queue.empty():  # 更新完后仍然无任务则退出
@@ -181,4 +203,9 @@ def search_periods(task_queue: Queue, write_queue: Queue, con: sqlite3.Connectio
         update_keyword_progress(keyword=keyword, start_time=start, min_time=min_time, end_time=end, write_queue=write_queue)
         time.sleep(3)  # 留足够时间等writer更新完数据库
 
-        if task_queue.empty(): get_query_periods(START, END, con, task_queue, keywords)  # 如果队列已空，则更新队列
+        if not check_gap:
+            if task_queue.empty():
+                get_query_periods(START, END, con, task_queue, keywords)  # 如果队列已空，则更新队列
+        else:
+            # 查漏补缺用
+            add_to_queue(task_queue, [(keyword, start, min_time)], con)
