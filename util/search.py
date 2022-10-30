@@ -208,5 +208,5 @@ def search_periods(task_queue: Queue, write_queue: Queue, con: sqlite3.Connectio
                 get_query_periods(START, END, con, task_queue, keywords)  # 如果队列已空，则更新队列
         else:
             # 查漏补缺用
-            if start != min_time:
+            if start.strftime('%Y-%m-%d %H:%M:%S') != min_time:
                 add_to_queue(task_queue, [(keyword, start, min_time)], con)
