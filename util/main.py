@@ -1,7 +1,7 @@
 from multiprocessing import Process, Queue
 
 from util.util import log_print, write_sqlite, parse_config, connect_db
-from util.search import get_query_periods, search_periods, get_keywords
+from util.search import get_query_periods, search_periods, get_keywords, get_gap_periods
 from util.content import get_post_contents
 from util.summary import email_summary
 
@@ -33,6 +33,15 @@ def main():
                 search.join()
             else:
                 search_periods(task_queue, write_queue, con, cfg['start_time'], cfg['end_time'], keywords)
+
+        if cfg['get_gap']:
+            get_gap_periods(task_queue, con)
+            while True:
+                if task_queue.empty():
+                    break
+                else:
+                    search_periods(task_queue, write_queue, con, cfg['start_time'], cfg['end_time'], keywords)
+                    get_gap_periods(task_queue, con)
 
         if cfg['get_content']:
             if cfg['multi_process']:
