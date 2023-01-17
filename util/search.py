@@ -36,6 +36,11 @@ def parse_post(post):
 
     create_at = re.findall('(?<=click:wb_time">)[.\s\S]+?(?=</a>)', post)
     create_at = parse_date(create_at[0]) if create_at else None
+    
+    # add_code = re.findall('(?<=<a href="http://t.cn/)[.\s\S]+?(?=target="_blank"><i class="wbicon">2</i>)', post)
+    # add_code = None if not add_code else add_code[0].replace('"', '').strip()
+    add_name = re.findall('(?<=<i class="wbicon">2</i>)[.\s\S]+?(?=</a>)', post)
+    add_name = None if not add_name else add_name[0]
 
     if "feed_list_content_full" in post:
         p = re.findall('(?<="feed_list_content_full")[.\s\S]+?(?=</p>)', post)
@@ -58,11 +63,11 @@ def parse_post(post):
     attitude = re.findall('(?<=class="woo-like-count">)[.\s\S]+?(?=</span>)', post)
     attitude = None if not attitude else 0 if not attitude[0].strip().isdigit() else int(attitude[0])
 
-    return mid, uid, nn, create_at, p, repost, comment, attitude
+    return mid, uid, nn, create_at, p, repost, comment, attitude, add_name
 
 
 def dump_posts(data: List[tuple], write_queue: Queue):
-    write_queue.put((f'INSERT OR IGNORE INTO posts(mid, uid, nick_name, created_at, content, repost_count, comment_count, attitude_count) VALUES (?,?,?,?,?,?,?,?)', data))
+    write_queue.put((f'INSERT OR IGNORE INTO posts(mid, uid, nick_name, created_at, content, repost_count, comment_count, attitude_count, address_name) VALUES (?,?,?,?,?,?,?,?,?)', data))
 
 
 def dump_search_results(data: List[tuple], write_queue: Queue):
