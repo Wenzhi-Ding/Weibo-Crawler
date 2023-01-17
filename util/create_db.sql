@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS posts (
     repost_count INTEGER,
     comment_count INTEGER,
     attitude_count INTEGER,
+    address_name TEXT,
     abstract_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     data_at TIMESTAMP
 );
